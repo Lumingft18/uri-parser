@@ -1,6 +1,6 @@
 URILib - Libreria Prolog per il Parsing delle URI
 
-Descrizione
+Descrizione:
 
 URILib è una libreria Prolog progettata per analizzare Uniform Resource Identifiers (URI). Fornisce una serie di predicati che permettono di scomporre una URI nelle sue componenti fondamentali, come schema, informazioni utente, host, porta, percorso, query e frammento. La libreria supporta diversi schemi comuni, inclusi http, https, ftp, mailto, news, tel, fax e zos.
 

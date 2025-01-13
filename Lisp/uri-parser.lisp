@@ -200,6 +200,25 @@
   (or (char= char #\?)
       (char= char #\#)))
 
+(defun parse-query (chars &optional (first t) (query-acc nil))
+  (if first
+      (cond
+        ((null chars)
+         (list nil nil))
+        ((char= (car chars) #\?)
+         (if (null (cdr chars))
+             (error "Invalid query: missing characters after '?'")
+             (parse-query (cdr chars) nil query-acc)))
+        (t (list nil chars)))
+    (cond
+      ((null chars)
+       (list (accumulate-to-string query-acc) nil))
+      ((char= (car chars) #\#)
+       (list (accumulate-to-string query-acc) chars))
+      ((is_character (car chars))
+       (parse-query (cdr chars) nil (cons (car chars) query-acc)))
+      (t (error "Invalid character in query: ~a" (car chars))))))
+
 (defun parse-fragment (chars &optional (first t) (fragment-acc nil))
   (if first
       (cond

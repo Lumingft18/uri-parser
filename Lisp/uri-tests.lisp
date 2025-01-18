@@ -9,7 +9,7 @@
 
 ;; Carica il parser URI se non è già stato caricato
 ;; Modifica il percorso del file secondo la tua configurazione
-(load "/Users/alessandrorutigliano/Desktop/Uni/2 anno/lp/Progetto/Lisp/uri-parser-copy.lisp")
+(load "/Users/alessandrorutigliano/Desktop/Uni/Rotunno_Rutigliano_Cristiano_Alessandro_00000_909971_LP_E1P_2025/Lisp/uri-parser.lisp")
 
 ;;; Definizione dei test
 (defparameter *uri-tests*
@@ -28,7 +28,7 @@
      :scheme "http"
      :userinfo "user"
      :host "server.example.org"
-     :port 8080
+     :port "8080"
      :path "path/to/resource"
      :query "key=value"
      :fragment "section1")
@@ -369,48 +369,54 @@
      :fragment nil)
   ))
 
-;;; Funzione per eseguire i test
+;;; Funzione per eseguire un singolo test
+(defun run-single-test (test)
+  (let ((input (getf test :input))
+        (expected-scheme (getf test :scheme))
+        (expected-userinfo (getf test :userinfo))
+        (expected-host (getf test :host))
+        (expected-port (getf test :port))
+        (expected-path (getf test :path))
+        (expected-query (getf test :query))
+        (expected-fragment (getf test :fragment))
+        (expected-error (getf test :error)))
+    (handler-case
+        ;; Chiama la funzione del parser sul test :input
+        (let ((parsed-uri (urilib-parse input)))
+          (if expected-error
+              ;; Se è atteso un errore ma il parser non lo solleva, il test fallisce
+              (values nil (format nil "Expected error but parsing succeeded: ~a" input))
+              ;; Altrimenti confronta i valori attesi
+              (if (and (equal (urilib-scheme parsed-uri) expected-scheme)
+                       (equal (urilib-userinfo parsed-uri) expected-userinfo)
+                       (equal (urilib-host parsed-uri) expected-host)
+                       (equal (urilib-port parsed-uri) expected-port)
+                       (equal (urilib-path parsed-uri) expected-path)
+                       (equal (urilib-query parsed-uri) expected-query)
+                       (equal (urilib-fragment parsed-uri) expected-fragment))
+                  (values t nil) ; Test passato
+                  (values nil "Mismatch in expected vs. actual output")))) ; Test fallito
+      (error (e)
+        ;; Se un errore è previsto e si verifica, il test è considerato riuscito
+        (if expected-error
+            (values t nil) ; Test passato
+            (values nil (format nil "Error during parsing: ~a" e))))))) ; Test fallito
+
+;;; Funzione per eseguire tutti i test
 (defun run-uri-tests ()
-  (format t "~%Esecuzione dei test URI...~%")
-  (loop for test in *uri-tests*
-        for input = (getf test :input)
-        for expected-error = (getf test :error)
-        do (if expected-error
-               ;; Test che si aspetta un errore
-               (let ((result (handler-case
-                              (progn
-                                (urilib-parse input)
-                                nil) ;; Se parsing ha successo, ritorna nil
-                              (urilib-error (e)
-                                (urilib-error-message e))))) ;; Recupera il messaggio d'errore
-                 (if (string= result expected-error)
-                     (format t " Test URI: ~a~%  Errore atteso: ~a~%  Errore ottenuto: ~a~%~%"
-                             input expected-error result)
-                     (format t " Test fallito: ~a~%  Errore atteso: ~a~%  Errore ottenuto: ~a~%~%"
-                             input expected-error result)))
-               ;; Test che si aspetta successo e verifica componenti
-               (let ((uri (urilib-parse input)))
-                 (let ((scheme (urilib-scheme uri))
-                       (userinfo (urilib-userinfo uri))
-                       (host (urilib-host uri))
-                       (port (urilib-port uri))
-                       (path (urilib-path uri))
-                       (query (urilib-query uri))
-                       (fragment (urilib-fragment uri)))
-                   (format t " Test URI: ~a~%" input)
-                   ;; Verifica ciascuna componente
-                   (when (not (equal scheme (getf test :scheme)))
-                     (format t "    Scheme: Atteso ~a, Ottenuto ~a~%" (getf test :scheme) scheme))
-                   (when (not (equal userinfo (getf test :userinfo)))
-                     (format t "    Userinfo: Atteso ~a, Ottenuto ~a~%" (getf test :userinfo) userinfo))
-                   (when (not (equal host (getf test :host)))
-                     (format t "    Host: Atteso ~a, Ottenuto ~a~%" (getf test :host) host))
-                   (when (not (equal port (getf test :port)))
-                     (format t "    Port: Atteso ~a, Ottenuto ~a~%" (getf test :port) port))
-                   (when (not (equal path (getf test :path)))
-                     (format t "    Path: Atteso ~a, Ottenuto ~a~%" (getf test :path) path))
-                   (when (not (equal query (getf test :query)))
-                     (format t "    Query: Atteso ~a, Ottenuto ~a~%" (getf test :query) query))
-                   (when (not (equal fragment (getf test :fragment)))
-                     (format t "    Fragment: Atteso ~a, Ottenuto ~a~%" (getf test :fragment) fragment)))))
-        finally (format t "~%Test completati.~%")))
+  (format t "Esecuzione dei test URI...~%")
+  (let ((success-count 0)
+        (failure-count 0))
+    (dolist (test *uri-tests*)
+      (multiple-value-bind (passed error) (run-single-test test)
+        (if passed
+            (progn
+              (incf success-count)
+              (format t "\u2713 Test riuscito: ~a~%" (getf test :input)))
+            (progn
+              (incf failure-count)
+              (format t "\u2717 Test fallito: ~a~%    Errore: ~a~%"
+                      (getf test :input)
+                      error)))))
+    (format t "~%Test completati. Riusciti: ~d, Falliti: ~d~%"
+            success-count failure-count)))

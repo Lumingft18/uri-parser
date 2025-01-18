@@ -90,8 +90,8 @@ Fragmento: N/A
 
 ## Autori
 
-- **Cristiano Rotunno**, Matricola: `""`
-- **Alessandro Rutigliano**, Matricola: `""`
+- **Cristiano Rotunno**, Matricola: `"914317"`
+- **Alessandro Rutigliano**, Matricola: `"909971"`
 
 ## Licenza
 

@@ -1,3 +1,5 @@
+;;  Cristiano Rotunno, Matricola: "914317"
+;;  Alessandro Rutigliano, Matricola: "909971"
 
 (defstruct urilib-structure
   scheme
@@ -43,12 +45,15 @@
      (urilib-parse-default scheme scheme-tail))))
 
 (defun urilib-parse-mailto (scheme-tail)
-  (let* ((userinfo-out (parse-userinfo-mailto scheme-tail))  ;; userinfo parse
+  (let* ((userinfo-out (parse-userinfo-mailto scheme-tail))
          (userinfo (car userinfo-out))
          (userinfo-tail (cadr userinfo-out))
          (host (if userinfo-tail
                 (let ((host-out (parse-host userinfo-tail)))
-                  (car host-out))
+                  (if (null (second host-out))
+                      (first host-out)
+                      (error "Invalid mailto"))
+                  )
                 nil)))
     (make-urilib-structure
       :scheme "mailto"
@@ -72,7 +77,8 @@
          :path nil
          :query nil
          :fragment nil)
-        (error "News scheme can only contain the host. Unexpected input: ~a" host-tail))))
+        (error "News scheme can only contain the host. 
+                Unexpected input: ~a" host-tail))))
 
 (defun urilib-parse-tel (scheme-tail)
   (let* ((userinfo-out (parse-userinfo-telfax scheme-tail))  ;; userinfo parse
@@ -87,7 +93,8 @@
          :path nil
          :query nil
          :fragment nil)
-        (error "Tel scheme can only contain the userinfo. Unexpected input: ~a" userinfo-tail))))
+        (error "Tel scheme can only contain the userinfo. 
+        Unexpected input: ~a" userinfo-tail))))
 
 (defun urilib-parse-fax (scheme-tail)
   (let* ((userinfo-out (parse-userinfo-telfax scheme-tail))  ;; userinfo parse
@@ -102,7 +109,8 @@
          :path nil
          :query nil
          :fragment nil)
-        (error "Fax scheme can only contain the userinfo. Unexpected input: ~a" userinfo-tail))))
+        (error "Fax scheme can only contain the userinfo. 
+        Unexpected input: ~a" userinfo-tail))))
 
 (defun urilib-parse-zos (scheme-tail)
   (let* ((authority-out (parse-authority scheme-tail)) ;; Authority Parsing
@@ -182,19 +190,25 @@
             (port-out (parse-port host-tail))
             (port (car port-out))
             (port-tail (cadr port-out)))
-        (list (list userinfo host port) port-tail))
-    (list nil chars)))
 
-(defun parse-userinfo (input &optional (userinfo-acc nil) (original-input input))
+        (if (and port-tail (char= (car port-tail) #\/))
+          (list (list userinfo host port) (cdr port-tail)) ;; Remove '/'
+          (list (list userinfo host port) port-tail)))
+    
+    (if (and chars (char= (car chars) #\/))
+          (list (list nil nil 80) (cdr chars)) ;; Remove '/'
+          (list (list nil nil 80) chars))))
+
+(defun parse-userinfo (input &optional (userinfo-acc nil) (or-input input))
   (cond
     ((null input)
-     (list nil original-input))
+     (list nil or-input))
     ((char= (car input) #\@)
      (list (accumulate-to-string userinfo-acc) (cdr input)))
     ((is_character (car input))
-     (parse-userinfo (cdr input) (cons (car input) userinfo-acc) original-input))
+     (parse-userinfo (cdr input) (cons (car input) userinfo-acc) or-input))
     (t
-     (list nil original-input))))
+     (list nil or-input))))
 
 (defun parse-host (input)
   (if (null input)
@@ -204,9 +218,7 @@
                        (parse-ip input)))
             (host (first result))
             (tail (second result)))
-      (if (and tail (char= (car tail) #\/))
-        (list host (cdr tail)) ;; Remove '/'
-        (list host tail)))))
+      (list host tail))))
 
 (defun parse-host-alpha (chars &optional (host-acc nil))
   (cond
@@ -248,10 +260,15 @@
       (error "Invalid IP: missing digits after '.'"))
 
     ((digit (car chars))
-     (let ((new-value (+ (* value 10) (- (char-code (car chars)) (char-code #\0)))))
+     (let ((new-value (+ (* value 10) 
+                          (- (char-code (car chars)) 
+                            (char-code #\0)))))
        (if (> new-value 255)
           (error "Invalid IP: block value exceeds 255")
-          (parse-ip (cdr chars) new-value counter (1+ digits) (cons (car chars) ip-acc)))))
+          (parse-ip (cdr chars) 
+                    new-value counter 
+                    (1+ digits) 
+                    (cons (car chars) ip-acc)))))
 
     ((char= (car chars) #\.)
       (parse-ip (cdr chars) 0 (1+ counter) 0 (cons (car chars) ip-acc)))
@@ -368,30 +385,37 @@
         (error "Invalid userinfo: must contain at least one valid character")
         (list (accumulate-to-string userinfo-acc) nil)))
     ((char= (car input) #\@)
-      (if (null (cdr input))
-        (error "Invalid mailto URI: missing host after '@'")
-        (list (accumulate-to-string userinfo-acc) (cdr input))))
+      (if (null userinfo-acc)
+        (error "Invalid userinfo: must contain at least one valid character")
+        (if (null (cdr input))
+          (error "Invalid mailto URI: missing host after '@'")
+          (list (accumulate-to-string userinfo-acc) (cdr input)))))
     ((is_character (car input))
       (parse-userinfo-mailto (cdr input) (cons (car input) userinfo-acc)))
     (t
       (error "Invalid character in userinfo: ~a" (car input)))))
 
-(defun parse-userinfo-telfax (input &optional (userinfo-acc nil) (original-input input))
+(defun parse-userinfo-telfax (input &optional (ui-acc nil) (or-input input))
   (cond
     ((null input)
-      (if (null userinfo-acc)
+      (if (null ui-acc)
         (error "Invalid userinfo: must contain at least one valid character")
-        (list (accumulate-to-string userinfo-acc) nil)))
+        (list (accumulate-to-string ui-acc) nil)))
     ((is_character (car input))
-      (parse-userinfo-telfax (cdr input) (cons (car input) userinfo-acc) original-input))
+      (parse-userinfo-telfax (cdr input) (cons (car input) ui-acc) or-input))
     (t
       (error "Invalid character in userinfo: ~a" (car input)))))
 
 
 (defun parse-path-zos (chars)
-  (let* ((path-out (parse-id44 chars))
-         (path (first path-out))
-         (path-tail (second path-out)))
+  (let* ((path-input 
+          (if (and (not (null chars))
+                   (char= (car chars) #\/))
+            (cdr chars)
+            chars))
+          (path-out (parse-id44 path-input))
+          (path (first path-out))
+          (path-tail (second path-out)))
     (list path path-tail)))
 
 (defun parse-id44 (chars &optional (id44-acc nil) (id44-length 0))
@@ -401,7 +425,13 @@
         (list (accumulate-to-string id44-acc) nil)
         (error "Invalid id44: must contain at most 44 characters")))
 
-    ((and (= id44-length 0) (not (letter (car chars))))
+    ((is-path-separator (car chars))
+      (if (<= id44-length 44)
+        (list (accumulate-to-string id44-acc) chars)
+        (error "Invalid id44: must contain at most 44 characters")))
+
+    ((and (= id44-length 0)
+          (not (letter (car chars))))
       (error "Invalid id44: must start with a letter"))
 
     ((char= (first chars) #\.)
@@ -414,11 +444,6 @@
           (error "Invalid character in path after '.': ~a" (second chars)))))
     ((alphanum (car chars))
       (parse-id44 (cdr chars) (cons (car chars) id44-acc) (1+ id44-length)))
-
-    ((is-path-separator (car chars))
-      (if (<= id44-length 44)
-        (list (accumulate-to-string id44-acc) chars)
-        (error "Invalid id44: must contain at most 44 characters")))
 
     ((= (char-code (car chars)) 40) ;; ( character found
       (if (<= id44-length 44)
@@ -508,7 +533,8 @@
     (cond
       ((null code) t)
       ((listp code)
-        (and (or (letter (car code)) (digit (car code))) (alphanum (cdr code))))
+        (and (or (letter (car code)) (digit (car code))) 
+              (alphanum (cdr code))))
       ((characterp code)
         (or (letter code) (digit code)))
       (t nil)))

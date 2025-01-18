@@ -9,7 +9,7 @@
 
 ;; Carica il parser URI se non è già stato caricato
 ;; Modifica il percorso del file secondo la tua configurazione
-(load "/Users/alessandrorutigliano/Desktop/Uni/Rotunno_Rutigliano_Cristiano_Alessandro_00000_909971_LP_E1P_2025/Lisp/uri-parser.lisp")
+(load "/Users/alessandrorutigliano/Desktop/Uni/Rotunno_Rutigliano_Cristiano_Alessandro_914317_909971_LP_E1P_2025/Lisp/uri-parser.lisp")
 
 ;;; Definizione dei test
 (defparameter *uri-tests*
@@ -234,11 +234,8 @@
      :query nil
      :fragment nil)
 
-
     (:input "zos:INVALID."
      :error "Terminazione non valida")
-
-  
 
     (:input "zos:123.DEF"
      :error "ID44 deve iniziare con una lettera")
@@ -299,7 +296,7 @@
      :error "ci deve essere per forza uno user info")
 
     (:input "http://[::1]"
-      :error "host non valido")
+     :error "host non valido")
 
     (:input "http://[::1]:invalid"
      :error "Porta non valida")
@@ -321,6 +318,828 @@
      :path nil
      :query nil
      :fragment nil)
+
+    ;; -------------------------------------------------
+    ;; Aggiunta di nuovi test VALID
+    ;; -------------------------------------------------
+
+    ;; Testset "Valid URLs aggiuntivi"
+
+    ;; Valid https URLs
+    (:input "https://user1@google.com"
+     :scheme "https"
+     :userinfo "user1"
+     :host "google.com"
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https://google.com"
+     :scheme "https"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https://user1@google.com:123"
+     :scheme "https"
+     :userinfo "user1"
+     :host "google.com"
+     :port 123
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https://user1@google.com.c81z:123"
+     :scheme "https"
+     :userinfo "user1"
+     :host "google.com.c81z"
+     :port 123
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https://user1@1.234.12.98"
+     :scheme "https"
+     :userinfo "user1"
+     :host "1.234.12.98"
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https://user1@1.234.12.98:98"
+     :scheme "https"
+     :userinfo "user1"
+     :host "1.234.12.98"
+     :port 98
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https://user1@g.c.c:45"
+     :scheme "https"
+     :userinfo "user1"
+     :host "g.c.c"
+     :port 45
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https://google.com:123"
+     :scheme "https"
+     :userinfo nil
+     :host "google.com"
+     :port 123
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https:/"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https:/path/to/res"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "path/to/res"
+     :query nil
+     :fragment nil)
+
+    (:input "https:/?query=value"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query "query=value"
+     :fragment nil)
+
+    (:input "https:/?query=value#frag"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query "query=value"
+     :fragment "frag")
+
+    (:input "https:/#frag"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query nil
+     :fragment "frag")
+
+    (:input "https:/path/to/res?query=value"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "path/to/res"
+     :query "query=value"
+     :fragment nil)
+
+    (:input "https:/path/to/res#frag"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "path/to/res"
+     :query nil
+     :fragment "frag")
+
+    (:input "https:/path/to/res?query=value#frag"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "path/to/res"
+     :query "query=value"
+     :fragment "frag")
+
+    (:input "https:"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "https:path/to/res"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "path/to/res"
+     :query nil
+     :fragment nil)
+
+    (:input "https:?query=value"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query "query=value"
+     :fragment nil)
+
+    (:input "https:#frag"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query nil
+     :fragment "frag")
+
+    (:input "https:path/to/res?query=value"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "path/to/res"
+     :query "query=value"
+     :fragment nil)
+
+    (:input "https:path/to/res#frag"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "path/to/res"
+     :query nil
+     :fragment "frag")
+
+    (:input "https:path/to/res?query=value#frag"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "path/to/res"
+     :query "query=value"
+     :fragment "frag")
+
+    (:input "https:?query=value#frag"
+     :scheme "https"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query "query=value"
+     :fragment "frag")
+
+    (:input "https:google.com/"
+     :scheme "https"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "/"
+     :query nil
+     :fragment nil)
+
+    (:input "https:google.comgoogle.com/path/to/res"
+     :scheme "https"
+     :userinfo nil
+     :host "google.comgoogle.com"
+     :port 80
+     :path "path/to/res"
+     :query nil
+     :fragment nil)
+
+    (:input "https:google.com/?query=value"
+     :scheme "https"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "/"
+     :query "query=value"
+     :fragment nil)
+
+    (:input "https:google.com/?query=value#frag"
+     :scheme "https"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "/"
+     :query "query=value"
+     :fragment "frag")
+
+    (:input "https:google.com/#frag"
+     :scheme "https"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "/"
+     :query nil
+     :fragment "frag")
+
+    (:input "https:google.com/path/to/res?query=value"
+     :scheme "https"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "path/to/res"
+     :query "query=value"
+     :fragment nil)
+
+    (:input "https:google.com/path/to/res#frag"
+     :scheme "https"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "path/to/res"
+     :query nil
+     :fragment "frag")
+
+    (:input "https:google.com/path/to/res?query=value#frag"
+     :scheme "https"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "path/to/res"
+     :query "query=value"
+     :fragment "frag")
+
+    ;; Valid ZOS URLs
+    (:input "zos://user1@google.com"
+     :scheme "zos"
+     :userinfo "user1"
+     :host "google.com"
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos://google.com"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos://user1@google.com:123"
+     :scheme "zos"
+     :userinfo "user1"
+     :host "google.com"
+     :port 123
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos://user1@google.com.c81z:123"
+     :scheme "zos"
+     :userinfo "user1"
+     :host "google.com.c81z"
+     :port 123
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos://user1@1.234.12.98"
+     :scheme "zos"
+     :userinfo "user1"
+     :host "1.234.12.98"
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos://user1@1.234.12.98:98"
+     :scheme "zos"
+     :userinfo "user1"
+     :host "1.234.12.98"
+     :port 98
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos://user1@g.c.c:45"
+     :scheme "zos"
+     :userinfo "user1"
+     :host "g.c.c"
+     :port 45
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos://google.com:123"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.com"
+     :port 123
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos:/"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos:/PATH.ZOS.EXAMPLE(CIAO)"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query nil
+     :fragment nil)
+
+    (:input "zos:/?query=value"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query "query=value"
+     :fragment nil)
+
+    (:input "zos:/?query=value#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query "query=value"
+     :fragment "frag")
+
+    (:input "zos:/#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query nil
+     :fragment "frag")
+
+    (:input "zos:/PATH.ZOS.EXAMPLE(CIAO)?q=test"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query "q=test"
+     :fragment nil)
+
+    (:input "zos:/PATH.ZOS.EXAMPLE(CIAO)#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query nil
+     :fragment "frag")
+
+    (:input "zos:/PATH.ZOS.EXAMPLE(CIAO)?q=test#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query "q=test"
+     :fragment "frag")
+
+    (:input "zos:"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "zos:PATH.ZOS.EXAMPLE(CIAO)"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query nil
+     :fragment nil)
+
+    (:input "zos:?query=value"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query "query=value"
+     :fragment nil)
+
+    (:input "zos:#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query nil
+     :fragment "frag")
+
+    (:input "zos:PATH.ZOS.EXAMPLE(CIAO)?q=test"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query "q=test"
+     :fragment nil)
+
+    (:input "zos:PATH.ZOS.EXAMPLE(CIAO)#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query nil
+     :fragment "frag")
+
+    (:input "zos:PATH.ZOS.EXAMPLE(CIAO)?q=test#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query "q=test"
+     :fragment "frag")
+
+    (:input "zos:?query=value#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host nil
+     :port 80
+     :path nil
+     :query "query=value"
+     :fragment "frag")
+
+    (:input "zos:google.com/"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "/"
+     :query nil
+     :fragment nil)
+
+    (:input "zos:google.comgoogle.com/PATH.ZOS.EXAMPLE(CIAO)"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.comgoogle.com"
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query nil
+     :fragment nil)
+
+    (:input "zos:google.com/?query=value"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "/"
+     :query "query=value"
+     :fragment nil)
+
+    (:input "zos:google.com/?query=value#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "/"
+     :query "query=value"
+     :fragment "frag")
+
+    (:input "zos:google.com/#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "/"
+     :query nil
+     :fragment "frag")
+
+    (:input "zos:google.com/PATH.ZOS.EXAMPLE(CIAO)?q=test"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query "q=test"
+     :fragment nil)
+
+    (:input "zos:google.com/PATH.ZOS.EXAMPLE(CIAO)#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query nil
+     :fragment "frag")
+
+    (:input "zos:google.com/PATH.ZOS.EXAMPLE(CIAO)?q=test#frag"
+     :scheme "zos"
+     :userinfo nil
+     :host "google.com"
+     :port 80
+     :path "PATH.ZOS.EXAMPLE(CIAO)"
+     :query "q=test"
+     :fragment "frag")
+
+    ;; Valid mailto URLs
+    (:input "mailto:user"
+     :scheme "mailto"
+     :userinfo "user"
+     :host nil
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "mailto:user@google.com"
+     :scheme "mailto"
+     :userinfo "user"
+     :host "google.com"
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "mailto:user@192.12.124.21"
+     :scheme "mailto"
+     :userinfo "user"
+     :host "192.12.124.21"
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    ;; Valid news URLs
+    (:input "news:google"
+     :scheme "news"
+     :userinfo nil
+     :host "google"
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "news:google.com"
+     :scheme "news"
+     :userinfo nil
+     :host "google.com"
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "news:192.12.124.21"
+     :scheme "news"
+     :userinfo nil
+     :host "192.12.124.21"
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    ;; Valid tel URLs
+    (:input "tel:+39-3209439015"
+     :scheme "tel"
+     :userinfo "+39-3209439015"
+     :host nil
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "tel:giacomo"
+     :scheme "tel"
+     :userinfo "giacomo"
+     :host nil
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    ;; Valid fax URLs
+    (:input "fax:+39-3209439015"
+     :scheme "fax"
+     :userinfo "+39-3209439015"
+     :host nil
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    (:input "fax:giacomo"
+     :scheme "fax"
+     :userinfo "giacomo"
+     :host nil
+     :port nil
+     :path nil
+     :query nil
+     :fragment nil)
+
+    ;; -------------------------------------------------
+    ;; Aggiunta di nuovi test INVALID
+    ;; -------------------------------------------------
+
+    ;; Testset "Invalid URLs aggiuntivi"
+
+    ;; Invalid https URLs
+    (:input "https://user1@1.234.12.256"
+     :error "Valore IP fuori range: 256")
+
+    (:input "https://user1@1.12.98:98"
+     :error "IP incompleto, mancano ottetti")
+
+    (:input "https://user1@google.1com.com:123"
+     :error "Host con carattere invalido")
+
+    (:input "https://user1@1oogle.com:123"
+     :error "Host non valido, inizia con un numero")
+
+    (:input "https://user1@:123"
+     :error "Host mancante dopo l'@")
+
+    (:input "https://user1@google.com:abc"
+     :error "Porta non valida: abc")
+
+    (:input "https://user1@google.com:"
+     :error "Porta mancante dopo il `:`")
+
+    (:input "https:user1@"
+     :error "Formato URL non valido")
+
+    (:input "https://user1@"
+     :error "Host mancante dopo l'@")
+
+    (:input ":user@google.com"
+     :error "Schema mancante")
+
+    (:input ":"
+     :error "URL vuoto o schema mancante")
+
+    (:input ":google.com"
+     :error "Schema mancante")
+
+    (:input ":/path/to/resource"
+     :error "Schema mancante")
+
+    ;; Invalid ZOS URLs
+    (:input "zos:/PATH.ZOS.EXAMPLE(CIAO)"
+     :error "Path ZOS non valido senza host o userinfo")
+
+    (:input "zos:(CIAO)?query=value"
+     :error "Formato ZOS non valido")
+
+    (:input "zos://user1@1.234.12.256"
+     :error "Valore IP fuori range: 256")
+
+    (:input "zos://user1@1.12.98:98"
+     :error "IP incompleto, mancano ottetti")
+
+    (:input "zos://user1@google.1com.com:123"
+     :error "Host con carattere invalido")
+
+    (:input "zos://user1@1oogle.com:123"
+     :error "Host non valido, inizia con un numero")
+
+    (:input "zos://user1@:123"
+     :error "Host mancante dopo l'@")
+
+    (:input "zos://user1@google.com:abc"
+     :error "Porta non valida: abc")
+
+    (:input "zos://user1@google.com:"
+     :error "Porta mancante dopo il `:`")
+
+    (:input "zos:user1@"
+     :error "Formato ZOS non valido")
+
+    (:input "zos://user1@"
+     :error "Host mancante dopo l'@")
+
+    ;; Invalid mailto URLs
+    (:input "mailto:"
+     :error "ci deve essere per forza uno user info")
+
+    (:input "mailto:user@"
+     :error "Formato mailto non valido")
+
+    (:input "mailto:@google.com"
+     :error "User info mancante prima della @")
+
+    (:input "mailto:user@google.com/path/to/res"
+     :error "Path non valido per mailto")
+
+    (:input "mailto:user@google.com?query"
+     :error "Query non valida per mailto")
+
+    (:input "mailto:user@google.com#fragment"
+     :error "Fragment non valido per mailto")
+
+    ;; Invalid news URLs
+    (:input "news:user@google"
+     :error "Formato news non valido")
+
+    (:input "news:user@google.com"
+     :error "Formato news non valido")
+
+    (:input "news:user@192.12.124.21"
+     :error "Formato news non valido")
+
+    (:input "mailto:google.com/path/to/res"
+     :error "Path non valido per mailto")
+
+    (:input "mailto:google.com?query"
+     :error "Query non valida per mailto")
+
+    (:input "mailto:google.com#fragment"
+     :error "Fragment non valido per mailto")
+
+    ;; Invalid tel URLs
+    (:input "tel:+39-320943#9015"
+     :error "Caratteri non validi nel numero di telefono")
+
+    (:input "tel:giacomo@host"
+     :error "Formato tel non valido con @")
+
+    (:input "tel:host.com"
+     :error "Formato tel non valido, atteso un numero")
+
+    (:input "tel:192.12.124.21"
+     :error "Formato tel non valido, atteso un numero")
+
+    ;; Invalid fax URLs
+    (:input "fax:+39-320943#9015"
+     :error "Caratteri non validi nel numero di fax")
+
+    (:input "fax:giacomo@host"
+     :error "Formato fax non valido con @")
+
+    (:input "fax:host.com"
+     :error "Formato fax non valido, atteso un numero")
+
+    (:input "fax:192.12.124.21"
+     :error "Formato fax non valido, atteso un numero")
   ))
 
 ;;; Funzione per eseguire un singolo test

@@ -86,7 +86,7 @@ Fragmento: N/A
 
 ## Requisiti
 
-- **Common Lisp**: La libreria è compatibile con i principali ambienti Lisp, come SBCL e Clisp.
+- **Common Lisp**: La libreria è compatibile con i principali ambienti Lisp, come LispWorks.
 
 ## Autori
 

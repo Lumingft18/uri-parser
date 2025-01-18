@@ -1,4 +1,4 @@
-%  Cristiano Rotunno, Matricola: "null"
+%  Cristiano Rotunno, Matricola: "914317"
 %  Alessandro Rutigliano, Matricola: "909971"
 
 urilib_parse(URIString, Out) :-
@@ -6,9 +6,9 @@ urilib_parse(URIString, Out) :-
     scheme_parse(Codes, Scheme, SchemeTail),
     urilib_parse_scheme_based(Scheme, SchemeTail, Out).
 
-urilib_parse_scheme_based("mailto", SchemeTail, uri("mailto", Userinfo, Host)) :-
+urilib_parse_scheme_based("mailto", SchemeTail, uri("mailto", Ui, Host)) :-
     !,
-    userinfo_parse(SchemeTail, Userinfo, UserTail),
+    userinfo_parse(SchemeTail, Ui, UserTail),
     host_parse(UserTail, Host, []).
 
 urilib_parse_scheme_based("news", SchemeTail, uri("news", Host)) :-
@@ -25,55 +25,78 @@ urilib_parse_scheme_based("fax", SchemeTail, uri("fax", Userinfo)) :-
     identifier(SchemeTail),
     string_codes(Userinfo, SchemeTail).
 
-urilib_parse_scheme_based("zos", SchemeTail, uri("zos", Userinfo, Host, Port, Path, Query, Fragment)) :-
+urilib_parse_scheme_based("zos", ST, uri("zos", Ui, H, Port, Path, Q, Frag)) :-
     !,
-    authority_parse(SchemeTail, Userinfo, Host, Port, AuthTail),
+    authority_parse(ST, Ui, H, Port, AuthTail),
     path_zos_parse(AuthTail, Path, PathTail),
-    query_parse(PathTail, Query, QueryTail),
-    fragment_parse(QueryTail, Fragment).
+    query_parse(PathTail, Q, QueryTail),
+    fragment_parse(QueryTail, Frag).
 
 
-urilib_parse_scheme_based(Scheme, SchemeTail, uri(Scheme, Userinfo, Host, Port, Path, Query, Fragment)) :-
-    authority_parse(SchemeTail, Userinfo, Host, Port, AuthTail),
+urilib_parse_scheme_based(Scheme, ST, uri(Scheme, U, H, Port, Path, Q, Frag)) :-
+    authority_parse(ST, U, H, Port, AuthTail),
     path_parse(AuthTail, Path, PathTail),
-    query_parse(PathTail, Query, QueryTail),
-    fragment_parse(QueryTail, Fragment).
-
-
-%
-% Parser dello Schema
-%
-
-% 58 = ':'
-
-scheme_parse(Codes, Scheme, Tail) :-
-    append(SchemeCode, [58|Tail], Codes),
-    !,
-    identifier(SchemeCode),
-    string_codes(Scheme, SchemeCode).
+    query_parse(PathTail, Q, QueryTail),
+    fragment_parse(QueryTail, Frag).
 
 %
-% Parser dell'Autorita
+% Scheme Parser
+%
+
+scheme_parse([F | T], Scheme, Tail) :-
+    character(F),
+    scheme_r_parse(T, SchemeCode, Tail),
+    string_codes(Scheme, [F | SchemeCode]).
+
+scheme_r_parse([], _, _) :-
+    false.
+
+scheme_r_parse([58 | Rest], [], Rest) :-
+    !.
+
+scheme_r_parse([First | Tail], [First | Scheme], Rest) :-
+    character(First),
+    scheme_r_parse(Tail, Scheme, Rest).
+
+%
+% Authority Parser
 %
 
 % 47 = '/'
-
 authority_parse([47, 47 | Codes], Userinfo, Host, Port, Tail) :-
     userinfo_parse(Codes, Userinfo, UserTail),
     host_parse(UserTail, Host, HostTail),
     port_parse(HostTail, Port, Tail),
     !.
 
-authority_parse(Codes, [], [], [], Codes) :- !.
-
-% 64 = '@'
-userinfo_parse(Codes, Userinfo, UserTail) :-
-    append(UserCode, [64 | UserTail], Codes),
-    identifier(UserCode),
-    string_codes(Userinfo, UserCode),
+authority_parse([47 | Codes], [], [], 80, Codes) :-
     !.
 
-userinfo_parse(Codes, [], Codes) :- !.
+authority_parse(Codes, [], [], 80, Codes) :- !.
+
+
+userinfo_parse([F | C], User, Tail) :-
+    character(F),
+    userinfo_r_parse(C, UserCode, Tail),
+    !,
+    string_codes(User, [F | UserCode]).
+
+userinfo_parse(Rest, [], Rest).
+
+userinfo_r_parse([], _, _) :-
+    false.
+
+% 64 = @
+userinfo_r_parse([64 | Rest], [], Rest) :-
+    !.
+
+userinfo_r_parse([First | Tail], [First | User], Rest) :-
+    character(First),
+    userinfo_r_parse(Tail, User, Rest).
+
+%
+% HOST PARSE
+%
 
 host_parse(Codes, Host, [Separator | Rest]) :-
     append(HostCodes, [Separator | Rest], Codes),
@@ -124,29 +147,55 @@ isPortSeparator(35) :- !.
 
 
 %
-% Parser del Percorso
+% Path Parser
 %
+
+path_parse([], [], []) :- !.
+
+path_parse([47], [], []) :- !.
+
+path_parse([C | T], [], [C | T]) :-
+    isPathSeparator(C),
+    !.
 
 path_parse([47 | Codes], Path, [Separator | Tail]) :-
     append(PathCode, [Separator | Tail], Codes),
     isPathSeparator(Separator),
     !,
     isPathValid(PathCode),
-    !,
     string_codes(Path, PathCode).
 
 path_parse([47 | Codes], Path, []) :-
     !,
     isPathValid(Codes),
+    string_codes(Path, Codes).
+
+path_parse(Codes, Path, [Separator | Tail]) :-
+    append(PathCode, [Separator | Tail], Codes),
+    isPathSeparator(Separator),
     !,
+    isPathValid(PathCode),
+    string_codes(Path, PathCode).
+
+path_parse(Codes, Path, []) :-
+    !,
+    isPathValid(Codes),
     string_codes(Path, Codes).
 
 path_parse(Codes, [], Codes) :- !.
 
+%
+% ZOS Path Parser
+%
 
-%
-% Parser del Percorso ZOS
-%
+path_zos_parse([], [], []) :- !.
+
+path_zos_parse([47], [], []) :- !.
+
+path_zos_parse([C | T], [], [C | T]) :-
+    isPathSeparator(C),
+    !.
+
 
 % 40 = '('
 path_zos_parse([47 | Codes], Path, [Separator | Tail]) :-
@@ -161,7 +210,21 @@ path_zos_parse([47 | Codes], Path, []) :-
     isZosPathValid(Codes),
     string_codes(Path, Codes).
 
+path_zos_parse(Codes, Path, [Separator | Tail]) :-
+    append(PathCode, [Separator | Tail], Codes),
+    isPathSeparator(Separator),
+    !,
+    isZosPathValid(PathCode),
+    string_codes(Path, PathCode).
+
+path_zos_parse(Codes, Path, []) :-
+    !,
+    isZosPathValid(Codes),
+    string_codes(Path, Codes).
+
+
 path_zos_parse(Codes, [], Codes) :- !.
+
 
 
 % 63 = '?'
@@ -170,7 +233,7 @@ isPathSeparator(63) :- !.
 isPathSeparator(35) :- !.
 
 %
-% Parser della Query
+% Query Parser
 %
 
 query_parse([63 | Codes], Query, [35 | Tail]) :-
@@ -192,7 +255,7 @@ query_parse([First | Tail], [], [First | Tail]) :-
     !.
 
 %
-% Parser del Fragmento
+% Fragment Parser
 %
 
 fragment_parse([35 | Codes], Fragment) :-
@@ -203,17 +266,13 @@ fragment_parse([35 | Codes], Fragment) :-
 fragment_parse([], []) :-
     !.
 
-fragment_parse([First | _], []) :-
-    First \= 35,
-    !.
-
-
 %
-% Validazione
+%  Valid
 %
 
 isPathValid(Codes) :-
     append(First, [47 | Second], Codes),
+    !,
     identifier(First),
     isPathValid(Second).
 
@@ -225,7 +284,7 @@ isZosPathValid(Codes) :-
     id8_parse(Tail).
 
 
-% 41 = '('
+% 40 = '('
 id44_parse(Codes, [40 | Tail]) :-
     append(Id44Code, [40 | Tail], Codes),
     !,
@@ -301,17 +360,22 @@ isPortValid(Codes) :-
     !.
 
 
-
 %
-% Grammatica
 %
-
+%
+% GRAMMAR
+%
+%
+%
 
 identifier(Codes) :- characters(Codes).
 
 host_identifier([First | Rest]) :-
     letter(First),
     characters(Rest).
+
+host_identifier([First]) :-
+    letter(First).
 
 % 95 = '_'
 character(95) :- !.
@@ -340,14 +404,14 @@ characters([Code|Rest]) :-
     !.
 
 
-% Maiuscole
+% UpperCase
 letter(Code) :-
     integer(Code),
     Code >= 65,
     Code =< 90,
     !.
 
-% Minuscole
+% LowerCase
 letter(Code) :-
     integer(Code),
     Code >= 97,
@@ -394,29 +458,30 @@ alphanums(Code) :-
     digit(Code),
     !.
 
+
 %
-% Funzioni per la visualizzazione della URI
+% DISPLAY FUNCTIONS
 %
 
-% Funzioni per stampare una URI sullo schermo
-urilib_display(uri(Scheme, Userinfo, Host, Port, Path, Query, Fragment)) :-
-    write('Schema: '), write(Scheme), nl,
-    write('Informazioni utente: '), (Userinfo \= [] -> write(Userinfo); write('N/A')), nl,
-    write('Host: '), write(Host), nl,
-    write('Porta: '), write(Port), nl,
-    write('Percorso: '), (Path \= [] -> write(Path); write('N/A')), nl,
-    write('Query: '), (Query \= [] -> write(Query); write('N/A')), nl,
-    write('Fragmento: '), (Fragment \= [] -> write(Fragment); write('N/A')), nl.
+urilib_display(UriString) :-
+    urilib_parse(UriString, uri(S, Ui, Host, Port, Path, Query, Fragment)),
+    format("Scheme: ~w~n", [S]),
+    format("Userinfo: ~w~n", [Ui]),
+    format("Host: ~w~n", [Host]),
+    format("Port: ~w~n", [Port]),
+    format("Path: ~w~n", [Path]),
+    format("Query: ~w~n", [Query]),
+    format("Fragment: ~w~n", [Fragment]).
 
-% Funzioni per stampare una URI su un file
-urilib_display(uri(Scheme, Userinfo, Host, Port, Path, Query, Fragment), Stream) :-
-    write(Stream, 'Schema: '), write(Stream, Scheme), nl(Stream),
-    write(Stream, 'Informazioni utente: '), (Userinfo \= [] -> write(Stream, Userinfo); write(Stream, 'N/A')), nl(Stream),
-    write(Stream, 'Host: '), write(Stream, Host), nl(Stream),
-    write(Stream, 'Porta: '), write(Stream, Port), nl(Stream),
-    write(Stream, 'Percorso: '), (Path \= [] -> write(Stream, Path); write(Stream, 'N/A')), nl(Stream),
-    write(Stream, 'Query: '), (Query \= [] -> write(Stream, Query); write(Stream, 'N/A')), nl(Stream),
-    write(Stream, 'Fragmento: '), (Fragment \= [] -> write(Stream, Fragment); write(Stream, 'N/A')), nl(Stream).
+urilib_display(In, Stream) :-
+    urilib_parse(In, uri(S, Ui, Host, Port, Path, Query, Fragment)),
+    format(Stream, "Scheme: ~w~n", [S]),
+    format(Stream, "Userinfo: ~w~n", [Ui]),
+    format(Stream, "Host: ~w~n", [Host]),
+    format(Stream, "Port: ~w~n", [Port]),
+    format(Stream, "Path: ~w~n", [Path]),
+    format(Stream, "Query: ~w~n", [Query]),
+    format(Stream, "Fragment: ~w~n", [Fragment]).
 
 
 %
@@ -425,6 +490,8 @@ urilib_display(uri(Scheme, Userinfo, Host, Port, Path, Query, Fragment), Stream)
 
 :- begin_tests(urilib_parse_extracted).
 
+    %% Test esistenti (mantenuti per completezza)
+    
     test('fax:+1-816-555-1212') :-
         urilib_parse('fax:+1-816-555-1212', Result),
         assertion(Result == uri("fax", "+1-816-555-1212")).
@@ -543,5 +610,446 @@ urilib_display(uri(Scheme, Userinfo, Host, Port, Path, Query, Fragment), Stream)
         delete_file(TextFile),
         ExpectedContent = "Schema: http\nInformazioni utente: N/A\nHost: disco.unimib.it\nPorta: 80\nPercorso: N/A\nQuery: N/A\nFragmento: N/A\n",
         assertion(FileContent == ExpectedContent).
+
+    %% Test aggiuntivi per stringhe VALID
+
+    %% Tests per HTTPS
+    test('https://user1@google.com') :-
+        urilib_parse('https://user1@google.com', Result),
+        assertion(Result == uri("https", "user1", "google.com", 80, [], [], [])).
+
+    test('https://google.com') :-
+        urilib_parse('https://google.com', Result),
+        assertion(Result == uri("https", [], "google.com", 80, [], [], [])).
+
+    test('https://user1@google.com:123') :-
+        urilib_parse('https://user1@google.com:123', Result),
+        assertion(Result == uri("https", "user1", "google.com", 123, [], [], [])).
+
+    test('https://user1@google.com.c81z:123') :-
+        urilib_parse('https://user1@google.com.c81z:123', Result),
+        assertion(Result == uri("https", "user1", "google.com.c81z", 123, [], [], [])).
+
+    test('https://user1@1.234.12.98') :-
+        urilib_parse('https://user1@1.234.12.98', Result),
+        assertion(Result == uri("https", "user1", "1.234.12.98", 80, [], [], [])).
+
+    test('https://user1@1.234.12.98:98') :-
+        urilib_parse('https://user1@1.234.12.98:98', Result),
+        assertion(Result == uri("https", "user1", "1.234.12.98", 98, [], [], [])).
+
+    test('https://user1@g.c.c:45') :-
+        urilib_parse('https://user1@g.c.c:45', Result),
+        assertion(Result == uri("https", "user1", "g.c.c", 45, [], [], [])).
+
+    test('https://google.com:123') :-
+        urilib_parse('https://google.com:123', Result),
+        assertion(Result == uri("https", [], "google.com", 123, [], [], [])).
+
+    test('https:/') :-
+        urilib_parse('https:/', Result),
+        assertion(Result == uri("https", [], [], 80, [], [], [])).
+
+    test('https:/path/to/res') :-
+        urilib_parse('https:/path/to/res', Result),
+        assertion(Result == uri("https", [], [], 80, "path/to/res", [], [])).
+
+    test('https:/?query=value') :-
+        urilib_parse('https:/?query=value', Result),
+        assertion(Result == uri("https", [], [], 80, [], "query=value", [])).
+
+    test('https:/?query=value#frag') :-
+        urilib_parse('https:/?query=value#frag', Result),
+        assertion(Result == uri("https", [], [], 80, [], "query=value", "frag")).
+
+    test('https:/#frag') :-
+        urilib_parse('https:/#frag', Result),
+        assertion(Result == uri("https", [], [], 80, [], [], "frag")).
+
+    test('https:/path/to/res?query=value') :-
+        urilib_parse('https:/path/to/res?query=value', Result),
+        assertion(Result == uri("https", [], [], 80, "path/to/res", "query=value", [])).
+
+    test('https:/path/to/res#frag') :-
+        urilib_parse('https:/path/to/res#frag', Result),
+        assertion(Result == uri("https", [], [], 80, "path/to/res", [], "frag")).
+
+    test('https:/path/to/res?query=value#frag') :-
+        urilib_parse('https:/path/to/res?query=value#frag', Result),
+        assertion(Result == uri("https", [], [], 80, "path/to/res", "query=value", "frag")).
+
+    test('https:') :-
+        urilib_parse('https:', Result),
+        assertion(Result == uri("https", [], [], 80, [], [], [])).
+
+    test('https:path/to/res') :-
+        urilib_parse('https:path/to/res', Result),
+        assertion(Result == uri("https", [], 80, "path/to/res", [], [], [])).
+
+    test('https:?query=value') :-
+        urilib_parse('https:?query=value', Result),
+        assertion(Result == uri("https", [], [], 80, [], "query=value", [])).
+
+    test('https:#frag') :-
+        urilib_parse('https:#frag', Result),
+        assertion(Result == uri("https", [], [], 80, [], [], "frag")).
+
+    test('https:path/to/res?query=value') :-
+        urilib_parse('https:path/to/res?query=value', Result),
+        assertion(Result == uri("https", [], "path/to/res", 80, [], "query=value", [])).
+
+    test('https:path/to/res#frag') :-
+        urilib_parse('https:path/to/res#frag', Result),
+        assertion(Result == uri("https", [], "path/to/res", 80, [], [], "frag")).
+
+    test('https:path/to/res?query=value#frag') :-
+        urilib_parse('https:path/to/res?query=value#frag', Result),
+        assertion(Result == uri("https", [], "path/to/res", 80, [], "query=value", "frag")).
+
+    test('https:?query=value#frag') :-
+        urilib_parse('https:?query=value#frag', Result),
+        assertion(Result == uri("https", [], [], 80, [], "query=value", "frag")).
+
+    test('https:google.com/') :-
+        urilib_parse('https:google.com/', Result),
+        assertion(Result == uri("https", [], "google.com", 80, [], [], [])).
+
+    test('https:google.comgoogle.com/path/to/res') :-
+        urilib_parse('https:google.comgoogle.com/path/to/res', Result),
+        assertion(Result == uri("https", [], "google.comgoogle.com", 80, "path/to/res", [], [])).
+
+    test('https:google.com/?query=value') :-
+        urilib_parse('https:google.com/?query=value', Result),
+        assertion(Result == uri("https", [], "google.com", 80, [], "query=value", [])).
+
+    test('https:google.com/?query=value#frag') :-
+        urilib_parse('https:google.com/?query=value#frag', Result),
+        assertion(Result == uri("https", [], "google.com", 80, [], "query=value", "frag")).
+
+    test('https:google.com/#frag') :-
+        urilib_parse('https:google.com/#frag', Result),
+        assertion(Result == uri("https", [], "google.com", 80, [], [], "frag")).
+
+    test('https:google.com/path/to/res?query=value') :-
+        urilib_parse('https:google.com/path/to/res?query=value', Result),
+        assertion(Result == uri("https", [], "google.com", 80, "path/to/res", "query=value", [])).
+
+    test('https:google.com/path/to/res#frag') :-
+        urilib_parse('https:google.com/path/to/res#frag', Result),
+        assertion(Result == uri("https", [], "google.com", 80, "path/to/res", [], "frag")).
+
+    test('https:google.com/path/to/res?query=value#frag') :-
+        urilib_parse('https:google.com/path/to/res?query=value#frag', Result),
+        assertion(Result == uri("https", [], "google.com", 80, "path/to/res", "query=value", "frag")).
+
+    %% Tests per ZOS
+    test('zos://user1@google.com') :-
+        urilib_parse('zos://user1@google.com', Result),
+        assertion(Result == uri("zos", "user1", "google.com", 80, [], [], [])).
+
+    test('zos://google.com') :-
+        urilib_parse('zos://google.com', Result),
+        assertion(Result == uri("zos", [], "google.com", 80, [], [], [])).
+
+    test('zos://user1@google.com:123') :-
+        urilib_parse('zos://user1@google.com:123', Result),
+        assertion(Result == uri("zos", "user1", "google.com", 123, [], [], [])).
+
+    test('zos://user1@google.com.c81z:123') :-
+        urilib_parse('zos://user1@google.com.c81z:123', Result),
+        assertion(Result == uri("zos", "user1", "google.com.c81z", 123, [], [], [])).
+
+    test('zos://user1@1.234.12.98') :-
+        urilib_parse('zos://user1@1.234.12.98', Result),
+        assertion(Result == uri("zos", "user1", "1.234.12.98", 80, [], [], [])).
+
+    test('zos://user1@1.234.12.98:98') :-
+        urilib_parse('zos://user1@1.234.12.98:98', Result),
+        assertion(Result == uri("zos", "user1", "1.234.12.98", 98, [], [], [])).
+
+    test('zos://user1@g.c.c:45') :-
+        urilib_parse('zos://user1@g.c.c:45', Result),
+        assertion(Result == uri("zos", "user1", "g.c.c", 45, [], [], [])).
+
+    test('zos://google.com:123') :-
+        urilib_parse('zos://google.com:123', Result),
+        assertion(Result == uri("zos", [], "google.com", 123, [], [], [])).
+
+    test('zos:/') :-
+        urilib_parse('zos:/', Result),
+        assertion(Result == uri("zos", [], "", 80, [], [], [])).
+
+    test('zos:/PATH.ZOS.EXAMPLE(CIAO)') :-
+        urilib_parse('zos:/PATH.ZOS.EXAMPLE(CIAO)', Result),
+        assertion(Result == uri("zos", [], "PATH.ZOS.EXAMPLE(CIAO)", 80, [], [], [])).
+
+    test('zos:/?query=value') :-
+        urilib_parse('zos:/?query=value', Result),
+        assertion(Result == uri("zos", [], "", 80, [], "query=value", [])).
+
+    test('zos:/?query=value#frag') :-
+        urilib_parse('zos:/?query=value#frag', Result),
+        assertion(Result == uri("zos", [], "", 80, [], "query=value", "frag")).
+
+    test('zos:/#frag') :-
+        urilib_parse('zos:/#frag', Result),
+        assertion(Result == uri("zos", [], "", 80, [], [], "frag")).
+
+    test('zos:/PATH.ZOS.EXAMPLE(CIAO)?query=value') :-
+        urilib_parse('zos:/PATH.ZOS.EXAMPLE(CIAO)?query=value', Result),
+        assertion(Result == uri("zos", [], "PATH.ZOS.EXAMPLE(CIAO)", 80, [], "query=value", [])).
+
+    test('zos:/PATH.ZOS.EXAMPLE(CIAO)#frag') :-
+        urilib_parse('zos:/PATH.ZOS.EXAMPLE(CIAO)#frag', Result),
+        assertion(Result == uri("zos", [], "PATH.ZOS.EXAMPLE(CIAO)", 80, [], [], "frag")).
+
+    test('zos:/PATH.ZOS.EXAMPLE(CIAO)?query=value#frag') :-
+        urilib_parse('zos:/PATH.ZOS.EXAMPLE(CIAO)?query=value#frag', Result),
+        assertion(Result == uri("zos", [], [], 80, "PATH.ZOS.EXAMPLE(CIAO)", "query=value", "frag")).
+
+    test('zos:') :-
+        urilib_parse('zos:', Result),
+        assertion(Result == uri("zos", [], "", 80, [], [], [])).
+
+    test('zos:PATH.ZOS.EXAMPLE(CIAO)') :-
+        urilib_parse('zos:PATH.ZOS.EXAMPLE(CIAO)', Result),
+        assertion(Result == uri("zos", [], "PATH.ZOS.EXAMPLE(CIAO)", 80, [], [], [])).
+
+    test('zos:?query=value') :-
+        urilib_parse('zos:?query=value', Result),
+        assertion(Result == uri("zos", [], "", 80, [], "query=value", [])).
+
+    test('zos:#frag') :-
+        urilib_parse('zos:#frag', Result),
+        assertion(Result == uri("zos", [], "", 80, [], [], "frag")).
+
+    test('zos:PATH.ZOS.EXAMPLE(CIAO)?query=value') :-
+        urilib_parse('zos:PATH.ZOS.EXAMPLE(CIAO)?query=value', Result),
+        assertion(Result == uri("zos", [], "PATH.ZOS.EXAMPLE(CIAO)", 80, [], "query=value", [])).
+
+    test('zos:PATH.ZOS.EXAMPLE(CIAO)#frag') :-
+        urilib_parse('zos:PATH.ZOS.EXAMPLE(CIAO)#frag', Result),
+        assertion(Result == uri("zos", [], "PATH.ZOS.EXAMPLE(CIAO)", 80, [], [], "frag")).
+
+    test('zos:PATH.ZOS.EXAMPLE(CIAO)?query=value#frag') :-
+        urilib_parse('zos:PATH.ZOS.EXAMPLE(CIAO)?query=value#frag', Result),
+        assertion(Result == uri("zos", [], "PATH.ZOS.EXAMPLE(CIAO)", 80, [], "query=value", "frag")).
+
+    test('zos:?query=value#frag') :-
+        urilib_parse('zos:?query=value#frag', Result),
+        assertion(Result == uri("zos", [], "", 80, [], "query=value", "frag")).
+
+    test('zos:google.com/') :-
+        urilib_parse('zos:google.com/', Result),
+        assertion(Result == uri("zos", [], "google.com", 80, [], [], [])).
+
+    test('zos:google.comgoogle.com/PATH.ZOS.EXAMPLE(CIAO)') :-
+        urilib_parse('zos:google.comgoogle.com/PATH.ZOS.EXAMPLE(CIAO)', Result),
+        assertion(Result == uri("zos", [], "google.comgoogle.com", 80, "PATH.ZOS.EXAMPLE(CIAO)", [], [])).
+
+    test('zos:google.com/?query=value') :-
+        urilib_parse('zos:google.com/?query=value', Result),
+        assertion(Result == uri("zos", [], "google.com", 80, [], "query=value", [])).
+
+    test('zos:google.com/?query=value#frag') :-
+        urilib_parse('zos:google.com/?query=value#frag', Result),
+        assertion(Result == uri("zos", [], "google.com", 80, [], "query=value", "frag")).
+
+    test('zos:google.com/#frag') :-
+        urilib_parse('zos:google.com/#frag', Result),
+        assertion(Result == uri("zos", [], "google.com", 80, [], [], "frag")).
+
+    test('zos:google.com/PATH.ZOS.EXAMPLE(CIAO)?query=value') :-
+        urilib_parse('zos:google.com/PATH.ZOS.EXAMPLE(CIAO)?query=value', Result),
+        assertion(Result == uri("zos", [], "google.com", 80, "PATH.ZOS.EXAMPLE(CIAO)", "query=value", [])).
+
+    test('zos:google.com/PATH.ZOS.EXAMPLE(CIAO)#frag') :-
+        urilib_parse('zos:google.com/PATH.ZOS.EXAMPLE(CIAO)#frag', Result),
+        assertion(Result == uri("zos", [], "google.com", 80, "PATH.ZOS.EXAMPLE(CIAO)", [], "frag")).
+
+    test('zos:google.com/PATH.ZOS.EXAMPLE(CIAO)?query=value#frag') :-
+        urilib_parse('zos:google.com/PATH.ZOS.EXAMPLE(CIAO)?query=value#frag', Result),
+        assertion(Result == uri("zos", [], "google.com", 80, "PATH.ZOS.EXAMPLE(CIAO)", "query=value", "frag")).
+
+    %% Tests per MAILTO
+    test('mailto:user') :-
+        urilib_parse('mailto:user', Result),
+        assertion(Result == uri("mailto", "user", [])).
+
+    test('mailto:user@google.com') :-
+        urilib_parse('mailto:user@google.com', Result),
+        assertion(Result == uri("mailto", "user", "google.com")).
+
+    test('mailto:user@192.12.124.21') :-
+        urilib_parse('mailto:user@192.12.124.21', Result),
+        assertion(Result == uri("mailto", "user", "192.12.124.21")).
+
+    %% Tests per NEWS
+    test('news:google') :-
+        urilib_parse('news:google', Result),
+        assertion(Result == uri("news", "google")).
+
+    test('news:google.com') :-
+        urilib_parse('news:google.com', Result),
+        assertion(Result == uri("news", "google.com")).
+
+    test('news:192.12.124.21') :-
+        urilib_parse('news:192.12.124.21', Result),
+        assertion(Result == uri("news", "192.12.124.21")).
+
+    %% Tests per TEL
+    test('tel:+39-3209439015') :-
+        urilib_parse('tel:+39-3209439015', Result),
+        assertion(Result == uri("tel", "+39-3209439015")).
+
+    test('tel:giacomo') :-
+        urilib_parse('tel:giacomo', Result),
+        assertion(Result == uri("tel", "giacomo")).
+
+    %% Tests per FAX
+    test('fax:+39-3209439015') :-
+        urilib_parse('fax:+39-3209439015', Result),
+        assertion(Result == uri("fax", "+39-3209439015")).
+
+    test('fax:giacomo') :-
+        urilib_parse('fax:giacomo', Result),
+        assertion(Result == uri("fax", "giacomo")).
+
+    %% Test aggiuntivi per stringhe INVALID
+
+    %% Tests INVALID per HTTPS
+    test('invalid_https://user1@1.234.12.256', [fail]) :-
+        urilib_parse('https://user1@1.234.12.256', _).
+
+    test('invalid_https://user1@1.12.98:98', [fail]) :-
+        urilib_parse('https://user1@1.12.98:98', _).
+
+    test('invalid_https://user1@google.1com.com:123', [fail]) :-
+        urilib_parse('https://user1@google.1com.com:123', _).
+
+    test('invalid_https://user1@1oogle.com:123', [fail]) :-
+        urilib_parse('https://user1@1oogle.com:123', _).
+
+    test('invalid_https://user1@:123', [fail]) :-
+        urilib_parse('https://user1@:123', _).
+
+    test('invalid_https://user1@google.com:abc', [fail]) :-
+        urilib_parse('https://user1@google.com:abc', _).
+
+    test('invalid_https://user1@google.com:', [fail]) :-
+        urilib_parse('https://user1@google.com:', _).
+
+    test('invalid_https:user1@', [fail]) :-
+        urilib_parse('https:user1@', _).
+
+    test('invalid_https://user1@', [fail]) :-
+        urilib_parse('https://user1@', _).
+
+    test('invalid_https::user@google.com', [fail]) :-
+        urilib_parse(':user@google.com', _).
+
+    test('invalid_https::', [fail]) :-
+        urilib_parse(':', _).
+
+    test('invalid_https::google.com', [fail]) :-
+        urilib_parse(':google.com', _).
+
+    test('invalid_https::/path/to/resource', [fail]) :-
+        urilib_parse(':/path/to/resource', _).
+
+    %% Tests INVALID per ZOS
+    test('invalid_zos:/PATH.ZOS.EXAMPLE(CIAO)', [fail]) :-
+        urilib_parse('zos:/PATH.ZOS.EXAMPLE(CIAO)', _).
+
+    test('invalid_zos:(CIAO)?query=value', [fail]) :-
+        urilib_parse('zos:(CIAO)?query=value', _).
+
+    test('invalid_zos://user1@1.234.12.256', [fail]) :-
+        urilib_parse('zos://user1@1.234.12.256', _).
+
+    test('invalid_zos://user1@1.12.98:98', [fail]) :-
+        urilib_parse('zos://user1@1.12.98:98', _).
+
+    test('invalid_zos://user1@google.1com.com:123', [fail]) :-
+        urilib_parse('zos://user1@google.1com.com:123', _).
+
+    test('invalid_zos://user1@1oogle.com:123', [fail]) :-
+        urilib_parse('zos://user1@1oogle.com:123', _).
+
+    test('invalid_zos://user1@:123', [fail]) :-
+        urilib_parse('zos://user1@:123', _).
+
+    test('invalid_zos://user1@google.com:abc', [fail]) :-
+        urilib_parse('zos://user1@google.com:abc', _).
+
+    test('invalid_zos://user1@google.com:', [fail]) :-
+        urilib_parse('zos://user1@google.com:', _).
+
+    test('invalid_zos:user1@', [fail]) :-
+        urilib_parse('zos:user1@', _).
+
+    %% Tests INVALID per MAILTO
+    test('invalid_mailto:', [fail]) :-
+        urilib_parse('mailto:', _).
+
+    test('invalid_mailto:user@', [fail]) :-
+        urilib_parse('mailto:user@', _).
+
+    test('invalid_mailto:@google.com', [fail]) :-
+        urilib_parse('mailto:@google.com', _).
+
+    test('invalid_mailto:user@google.com/path/to/res', [fail]) :-
+        urilib_parse('mailto:user@google.com/path/to/res', _).
+
+    test('invalid_mailto:user@google.com?query', [fail]) :-
+        urilib_parse('mailto:user@google.com?query', _).
+
+    test('invalid_mailto:user@google.com#fragment', [fail]) :-
+        urilib_parse('mailto:user@google.com#fragment', _).
+
+    %% Tests INVALID per NEWS
+    test('invalid_news:user@google', [fail]) :-
+        urilib_parse('news:user@google', _).
+
+    test('invalid_news:user@google.com', [fail]) :-
+        urilib_parse('news:user@google.com', _).
+
+    test('invalid_news:user@192.12.124.21', [fail]) :-
+        urilib_parse('news:user@192.12.124.21', _).
+
+    test('invalid_news:mailto:google.com/path/to/res', [fail]) :-
+        urilib_parse('mailto:google.com/path/to/res', _).
+
+    test('invalid_news:mailto:google.com?query', [fail]) :-
+        urilib_parse('mailto:google.com?query', _).
+
+    test('invalid_news:mailto:google.com#fragment', [fail]) :-
+        urilib_parse('mailto:google.com#fragment', _).
+
+    %% Tests INVALID per TEL
+    test('invalid_tel:tel:+39-320943#9015', [fail]) :-
+        urilib_parse('tel:+39-320943#9015', _).
+
+    test('invalid_tel:tel:giacomo@host', [fail]) :-
+        urilib_parse('tel:giacomo@host', _).
+
+    test('invalid_tel:tel:host.com', [fail]) :-
+        urilib_parse('tel:host.com', _).
+
+    test('invalid_tel:tel:192.12.124.21', [fail]) :-
+        urilib_parse('tel:192.12.124.21', _).
+
+    %% Tests INVALID per FAX
+    test('invalid_fax:fax:+39-320943#9015', [fail]) :-
+        urilib_parse('fax:+39-320943#9015', _).
+
+    test('invalid_fax:fax:giacomo@host', [fail]) :-
+        urilib_parse('fax:giacomo@host', _).
+
+    test('invalid_fax:fax:host.com', [fail]) :-
+        urilib_parse('fax:host.com', _).
+
+    test('invalid_fax:fax:192.12.124.21', [fail]) :-
+        urilib_parse('fax:192.12.124.21', _).
 
 :- end_tests(urilib_parse_extracted).

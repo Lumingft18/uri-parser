@@ -278,11 +278,11 @@
 
     (cond
       ((null chars)
-       (list (accumulate-to-string port-acc) nil))
+       (list (accumulate-to-int port-acc) nil))
       ((char= (car chars) #\/)
-       (list (accumulate-to-string port-acc) (cdr chars)))
+       (list (accumulate-to-int port-acc) (cdr chars)))
       ((is-port-separator (car chars))
-       (list (accumulate-to-string port-acc) chars))
+       (list (accumulate-to-int port-acc) chars))
       ((digit (car chars))
        (parse-port (cdr chars) nil (cons (car chars) port-acc)))
       (t (error "Invalid character in port: ~a" (car chars))))))
@@ -452,6 +452,11 @@
   (if (null chars)
       nil
       (coerce (reverse chars) 'string)))
+
+(defun accumulate-to-int (chars)
+  (if (null chars)
+      nil
+      (parse-integer (coerce (reverse chars) 'string))))
     
 ;;------------------------------------------
 ;;

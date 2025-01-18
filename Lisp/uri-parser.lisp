@@ -1,4 +1,4 @@
-;;; Definizione della struttura URI
+
 (defstruct urilib-structure
   scheme
   userinfo
@@ -8,7 +8,6 @@
   query
   fragment)
 
-;;; Funzioni di accesso esplicite
 (defun urilib-scheme (uri) (urilib-structure-scheme uri))
 (defun urilib-userinfo (uri) (urilib-structure-userinfo uri))
 (defun urilib-host (uri) (urilib-structure-host uri))
@@ -17,27 +16,127 @@
 (defun urilib-query (uri) (urilib-structure-query uri))
 (defun urilib-fragment (uri) (urilib-structure-fragment uri))
 
-;;; Funzione principale di parsing
-(defun urilib-parse (input-string)
-  (let ((chars (coerce input-string 'list)))
-    (parse-uri chars)))
+;;------------------------------------------
+;;
+;;              URILIB PARSE FUNCTIONS
+;;
+;;------------------------------------------
 
-(defun parse-uri (chars)
-  (let* ((scheme-out (parse-scheme chars)) ;; Scheme Parsing
-         (scheme (car scheme-out))
-         (scheme-tail (cadr scheme-out))
-         (authority-out (parse-authority scheme-tail)) ;; Authority Parsing
-         (authority (car authority-out))
-         (auth-tail (cadr authority-out))
-         (path-out (parse-path auth-tail)) ;; Path Parsing
-         (path (car path-out))
-         (path-tail (cadr path-out))
+(defun urilib-parse (input-string)
+  (let* ((chars (coerce input-string 'list))
+         (scheme-out (parse-scheme chars)))
+    (urilib-parse-scheme-based (first scheme-out) (second scheme-out))))
+
+(defun urilib-parse-scheme-based (scheme scheme-tail)
+  (cond
+    ((string= scheme "mailto")
+     (urilib-parse-mailto scheme-tail))
+    ((string= scheme "news")
+     (urilib-parse-news scheme-tail))
+    ((string= scheme "tel")
+     (urilib-parse-tel scheme-tail))
+    ((string= scheme "fax")
+     (urilib-parse-fax scheme-tail))
+    ((string= scheme "zos")
+     (urilib-parse-zos scheme-tail))
+    (t
+     (urilib-parse-default scheme scheme-tail))))
+
+(defun urilib-parse-mailto (scheme-tail)
+  (let* ((userinfo-out (parse-userinfo-mailto scheme-tail))  ;; userinfo parse
+         (userinfo (car userinfo-out))
+         (userinfo-tail (cadr userinfo-out))
+         (host (if userinfo-tail
+                (let ((host-out (parse-host userinfo-tail)))
+                  (car host-out))
+                nil)))
+    (make-urilib-structure
+      :scheme "mailto"
+      :userinfo userinfo
+      :host host
+      :port nil
+      :path nil
+      :query nil
+      :fragment nil)))
+
+(defun urilib-parse-news (scheme-tail)
+  (let* ((host-out (parse-host scheme-tail))  ;; host parse
+         (host (first host-out))
+         (host-tail (second host-out)))
+    (if (null host-tail)
+        (make-urilib-structure
+         :scheme "news"
+         :userinfo nil
+         :host host
+         :port nil
+         :path nil
+         :query nil
+         :fragment nil)
+        (error "News scheme can only contain the host. Unexpected input: ~a" host-tail))))
+
+(defun urilib-parse-tel (scheme-tail)
+  (let* ((userinfo-out (parse-userinfo-telfax scheme-tail))  ;; userinfo parse
+         (userinfo (first userinfo-out))
+         (userinfo-tail (second userinfo-out)))
+    (if (null userinfo-tail)
+        (make-urilib-structure
+         :scheme "tel"
+         :userinfo userinfo
+         :host nil
+         :port nil
+         :path nil
+         :query nil
+         :fragment nil)
+        (error "Tel scheme can only contain the userinfo. Unexpected input: ~a" userinfo-tail))))
+
+(defun urilib-parse-fax (scheme-tail)
+  (let* ((userinfo-out (parse-userinfo-telfax scheme-tail))  ;; userinfo parse
+         (userinfo (first userinfo-out))
+         (userinfo-tail (second userinfo-out)))
+    (if (null userinfo-tail)
+        (make-urilib-structure
+         :scheme "fax"
+         :userinfo userinfo
+         :host nil
+         :port nil
+         :path nil
+         :query nil
+         :fragment nil)
+        (error "Fax scheme can only contain the userinfo. Unexpected input: ~a" userinfo-tail))))
+
+(defun urilib-parse-zos (scheme-tail)
+  (let* ((authority-out (parse-authority scheme-tail)) ;; Authority Parsing
+         (authority (first authority-out))
+         (auth-tail (second authority-out))
+         (path-out (parse-path-zos auth-tail)) ;; Path Parsing
+         (path (first path-out))
+         (path-tail (second path-out))
          (query-out (parse-query path-tail)) ;; Query Parsing
-         (query (car query-out))
-         (query-tail (cadr query-out))
+         (query (first query-out))
+         (query-tail (second query-out))
          (fragment-out (parse-fragment query-tail)) ;; Fragment Parsing
-         (fragment (car fragment-out))
-         (fragment-tail (cadr fragment-out)))
+         (fragment (first fragment-out)))
+    (make-urilib-structure
+     :scheme "zos"
+     :userinfo (first authority)
+     :host (second authority)
+     :port (third authority)
+     :path path
+     :query query
+     :fragment fragment)))
+
+(defun urilib-parse-default (scheme scheme-tail)
+  (let* ((authority-out (parse-authority scheme-tail)) ;; Authority Parsing
+         (authority (first authority-out))
+         (auth-tail (second authority-out))
+         (path-out (parse-path auth-tail)) ;; Path Parsing
+         (path (first path-out))
+         (path-tail (second path-out))
+         (query-out (parse-query path-tail)) ;; Query Parsing
+         (query (first query-out))
+         (query-tail (second query-out))
+         (fragment-out (parse-fragment query-tail)) ;; Fragment Parsing
+         (fragment (first fragment-out)))
     (make-urilib-structure
      :scheme scheme
      :userinfo (first authority)
@@ -47,12 +146,20 @@
      :query query
      :fragment fragment)))
 
+;;------------------------------------------
+;;
+;;              ELEMENTS PARSE FUNCTIONS
+;;
+;;------------------------------------------
+
 (defun parse-scheme (chars &optional (scheme-acc nil))
   (cond
     ((null chars)
      (error "Invalid scheme: input is empty"))
     ((char= (car chars) #\:)
-     (list (accumulate-to-string scheme-acc) (cdr chars)))
+      (if (null scheme-acc)
+          (error "Invalid scheme: must contain at least one character")
+          (list (accumulate-to-string scheme-acc) (cdr chars))))
     ((is_character (car chars))
      (parse-scheme (cdr chars) (cons (car chars) scheme-acc)))
     (t (error "Invalid scheme character: ~a" (car chars)))))
@@ -90,52 +197,67 @@
      (list nil original-input))))
 
 (defun parse-host (input)
-  (let* ((host-out (catch-host input))
-         (host (car host-out))
-         (host-tail (cadr host-out)))
-    (if (or (is-host-valid host) (parse-ip host))
-        (list (coerce host 'string) host-tail)
-        (error "Invalid host"))))
+  (if (null input)
+    (error "Invalid host: input is empty")
+    (let* ((result (if (letter (car input))
+                       (parse-host-alpha input)
+                       (parse-ip input)))
+            (host (first result))
+            (tail (second result)))
+      (if (and tail (char= (car tail) #\/))
+        (list host (cdr tail)) ;; Remove '/'
+        (list host tail)))))
 
-(defun catch-host (input &optional (host-acc nil))
+(defun parse-host-alpha (chars &optional (host-acc nil))
   (cond
-    ((null input)
-     (list (reverse host-acc) nil))
-    ((is-host-separator (car input))
-     (list (reverse host-acc) input))
+    ((null chars)
+      (if (null host-acc)
+        (error "Invalid host: must contain at least one character")
+        (list (accumulate-to-string host-acc) nil)))
+
+    ((and (null host-acc) (not (letter (car chars))))
+      (error "Invalid host: must start with a letter"))
+
+    ((char= (first chars) #\.)
+      (cond
+        ((null (second chars))
+          (error "Invalid host: host cannot end with '.'."))
+        ((letter (second chars))
+          (parse-host-alpha (cdr chars) (cons (car chars) host-acc)))
+        (t
+          (error "Invalid character in path after '.': ~a" (second chars)))))
+    ((alphanum (car chars))
+      (parse-host-alpha (cdr chars) (cons (car chars) host-acc)))
+
+    ((is-host-separator (car chars))
+      (list (accumulate-to-string host-acc) chars))
     (t
-     (catch-host (cdr input) (cons (car input) host-acc)))))
+      (error "Invalid character in host: ~a" (car chars)))))
 
-(defun is-host-valid (input &optional (restart t))
-  (if restart
-      (cond
-        ((null input) nil)
-        ((letter (car input))
-         (is-host-valid (cdr input) nil))
-        ((char= (car input) #\.)
-         (error "Two consecutive dots"))
-        (t nil))
-      (cond
-        ((null input) t)
-        ((or (letter (car input)) (digit (car input)))
-         (is-host-valid (cdr input) nil))
-        ((char= (car input) #\.)
-         (is-host-valid (cdr input) t))
-        (t nil))))
-
-(defun parse-ip (chars &optional (value 0) (counter 0) (digits 0))
+(defun parse-ip (chars &optional (value 0) (counter 0) (digits 0) (ip-acc nil))
   (cond
-    ((and (null chars) (= counter 3) (> digits 0)) t)
-    ((or (null chars) (> counter 3) (> digits 3)) nil)
-    ((and (char= (car chars) #\.) (= digits 0)) nil)
+    ((or (null chars) (is-host-separator (car chars)))
+     (if (and (= counter 3) (> digits 0))
+        (list (accumulate-to-string ip-acc) chars)
+        (error "Invalid IP: too few blocks")))
+        
+    ((or (> counter 3) (> digits 3))
+      (error "Invalid IP: invalid format"))
+
+    ((and (char= (car chars) #\.) (= digits 0))
+      (error "Invalid IP: missing digits after '.'"))
+
     ((digit (car chars))
      (let ((new-value (+ (* value 10) (- (char-code (car chars)) (char-code #\0)))))
        (if (> new-value 255)
-           nil
-           (parse-ip (cdr chars) new-value counter (+ digits 1)))))
+          (error "Invalid IP: block value exceeds 255")
+          (parse-ip (cdr chars) new-value counter (1+ digits) (cons (car chars) ip-acc)))))
+
     ((char= (car chars) #\.)
-     (parse-ip (cdr chars) 0 (+ counter 1) 0))
-    (t nil)))
+      (parse-ip (cdr chars) 0 (1+ counter) 0 (cons (car chars) ip-acc)))
+    
+    (t
+      (error "Invalid character in IP: ~a" (car chars)))))
 
 (defun is-host-separator (char)
   (or (char= char #\:)
@@ -157,6 +279,8 @@
     (cond
       ((null chars)
        (list (accumulate-to-string port-acc) nil))
+      ((char= (car chars) #\/)
+       (list (accumulate-to-string port-acc) (cdr chars)))
       ((is-port-separator (car chars))
        (list (accumulate-to-string port-acc) chars))
       ((digit (car chars))
@@ -168,34 +292,27 @@
       (char= char #\?)
       (char= char #\#)))
 
-(defun parse-path (chars &optional (restart nil) (path-acc nil))
-  (if restart
+(defun parse-path (chars &optional (path-acc nil))
+  (cond
+    ((null chars)
+      (list (accumulate-to-string path-acc) nil))
+    ((char= (first chars) #\/)
       (cond
-        ((null chars)
-         (if (null path-acc)
-             (list nil nil)
-             (error "Invalid path: path cannot end with '/'.")))
-        ((char= (car chars) #\/)
-          (error "Invalid path: two consecutive '/'."))
-        ((is_character (car chars))
-          (parse-path (cdr chars) nil (cons (car chars) path-acc)))
-        (t 
-         (error "Invalid character in path: ~a" (car chars))))
-
-      (cond
-        ((null chars)
-         (list (accumulate-to-string path-acc) nil))
-        ((is-path-separator (car chars))
-         (list (accumulate-to-string path-acc) chars))
-        ((char= (car chars) #\/)
-         (if (null path-acc)
-             (parse-path (cdr chars) t nil)
-             (parse-path (cdr chars) t (cons (car chars) path-acc))))
-        ((is_character (car chars))
-          (parse-path (cdr chars) nil (cons (car chars) path-acc)))
-        (t 
-         (error "Invalid character in path: ~a" (car chars))))))
-
+        ((null (second chars))
+          (if (null path-acc)
+              (list nil nil)
+              (error "Invalid path: path cannot end with '/'.")))
+        ((is_character (second chars))
+          (parse-path (cdr chars) (cons (car chars) path-acc)))
+        (t
+          (error "Invalid character in path after '/': ~a" (second chars)))))
+    ((is_character (car chars))
+      (parse-path (cdr chars) (cons (car chars) path-acc)))
+    ((is-path-separator (car chars))
+      (list (accumulate-to-string path-acc) chars))
+    (t
+      (error "Invalid character in path: ~a" (car chars)))))
+    
 (defun is-path-separator (char)
   (or (char= char #\?)
       (char= char #\#)))
@@ -236,6 +353,100 @@
         ((is_character (car chars))
           (parse-fragment (cdr chars) nil (cons (car chars) fragment-acc)))
         (t (error "Invalid character in fragment: ~a" (car chars))))))
+
+
+;;------------------------------------------
+;;
+;;              SPECIAL FUNCTIONS
+;;
+;;------------------------------------------
+
+(defun parse-userinfo-mailto (input &optional (userinfo-acc nil))
+  (cond
+    ((null input)
+      (if (null userinfo-acc)
+        (error "Invalid userinfo: must contain at least one valid character")
+        (list (accumulate-to-string userinfo-acc) nil)))
+    ((char= (car input) #\@)
+      (if (null (cdr input))
+        (error "Invalid mailto URI: missing host after '@'")
+        (list (accumulate-to-string userinfo-acc) (cdr input))))
+    ((is_character (car input))
+      (parse-userinfo-mailto (cdr input) (cons (car input) userinfo-acc)))
+    (t
+      (error "Invalid character in userinfo: ~a" (car input)))))
+
+(defun parse-userinfo-telfax (input &optional (userinfo-acc nil) (original-input input))
+  (cond
+    ((null input)
+      (if (null userinfo-acc)
+        (error "Invalid userinfo: must contain at least one valid character")
+        (list (accumulate-to-string userinfo-acc) nil)))
+    ((is_character (car input))
+      (parse-userinfo-telfax (cdr input) (cons (car input) userinfo-acc) original-input))
+    (t
+      (error "Invalid character in userinfo: ~a" (car input)))))
+
+
+(defun parse-path-zos (chars)
+  (let* ((path-out (parse-id44 chars))
+         (path (first path-out))
+         (path-tail (second path-out)))
+    (list path path-tail)))
+
+(defun parse-id44 (chars &optional (id44-acc nil) (id44-length 0))
+  (cond
+    ((null chars)
+      (if (<= id44-length 44)
+        (list (accumulate-to-string id44-acc) nil)
+        (error "Invalid id44: must contain at most 44 characters")))
+
+    ((and (= id44-length 0) (not (letter (car chars))))
+      (error "Invalid id44: must start with a letter"))
+
+    ((char= (first chars) #\.)
+      (cond
+        ((null (second chars))
+          (error "Invalid path: path cannot end with '.'."))
+        ((alphanum (second chars))
+          (parse-id44 (cdr chars) (cons (car chars) id44-acc) (1+ id44-length)))
+        (t
+          (error "Invalid character in path after '.': ~a" (second chars)))))
+    ((alphanum (car chars))
+      (parse-id44 (cdr chars) (cons (car chars) id44-acc) (1+ id44-length)))
+
+    ((is-path-separator (car chars))
+      (if (<= id44-length 44)
+        (list (accumulate-to-string id44-acc) chars)
+        (error "Invalid id44: must contain at most 44 characters")))
+
+    ((= (char-code (car chars)) 40) ;; ( character found
+      (if (<= id44-length 44)
+        (parse-id8 (cdr chars) (cons (car chars) id44-acc))
+        (error "Invalid id44: must contain at most 44 characters")))
+    (t
+      (error "Invalid character in path: ~a" (car chars)))))
+
+(defun parse-id8 (chars &optional (id8-acc nil) (id8-length 0))
+  (cond
+    ((null chars)
+      (error "Invalid id8: missing ')' character"))
+    ((= (char-code (car chars)) 41) ;; ) character found
+      (if (> id8-length 0)
+        (if (<= id8-length 8)
+          (list (accumulate-to-string (cons (car chars) id8-acc)) (cdr chars))
+          (error "Invalid id8: must contain at most 8 characters"))
+        (error "Invalid id8: must contain at least one character")))
+
+    ((and (= id8-length 0) (not (letter (car chars))))
+      (error "Invalid id8: must start with a letter"))
+
+    ((alphanum (car chars))
+      (parse-id8 (cdr chars) (cons (car chars) id8-acc) (1+ id8-length)))
+
+    (t
+      (error "Invalid character in path: ~a" (car chars)))))
+
 
 (defun accumulate-to-string (chars)
   (if (null chars)
@@ -296,3 +507,17 @@
       ((characterp code)
         (or (letter code) (digit code)))
       (t nil)))
+
+;;------------------------------------------
+;;
+;;              DISPLAY
+;;
+;;------------------------------------------     
+(defun urilib-display (uri)
+  (format t "Scheme: ~a~%" (urilib-structure-scheme uri))
+  (format t "Userinfo: ~a~%" (urilib-structure-userinfo uri))
+  (format t "Host: ~a~%" (urilib-structure-host uri))
+  (format t "Port: ~a~%" (urilib-structure-port uri))
+  (format t "Path: ~a~%" (urilib-structure-path uri))
+  (format t "Query: ~a~%" (urilib-structure-query uri))
+  (format t "Fragment: ~a~%" (urilib-structure-fragment uri)))

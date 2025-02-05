@@ -8,8 +8,8 @@ urilib_parse(URIString, Out) :-
 
 urilib_parse_scheme_based("mailto", SchemeTail, uri("mailto", Ui, Host)) :-
     !,
-    userinfo_parse(SchemeTail, Ui, UserTail),
-    host_parse(UserTail, Host, []).
+    userinfo_mailto_parse(SchemeTail, Ui, UserTail),
+    host_mailto_parse(UserTail, Host).
 
 urilib_parse_scheme_based("news", SchemeTail, uri("news", Host)) :-
     !,
@@ -154,8 +154,12 @@ path_parse([], [], []) :- !.
 
 path_parse([47], [], []) :- !.
 
-path_parse([C | T], [], [C | T]) :-
-    isPathSeparator(C),
+path_parse([47, S | T], [], [S | T]) :-
+    isPathSeparator(S),
+    !.
+
+path_parse([S | T], [], [S | T]) :-
+    isPathSeparator(S),
     !.
 
 path_parse([47 | Codes], Path, [Separator | Tail]) :-
@@ -185,6 +189,25 @@ path_parse(Codes, Path, []) :-
 path_parse(Codes, [], Codes) :- !.
 
 %
+% MAILTO 
+%
+
+userinfo_mailto_parse(Codes, User, [64 | Tail]) :-
+    append(UserCodes, [64 | Tail], Codes),
+    !,
+    identifier(UserCodes),
+    string_codes(User, UserCodes).
+
+userinfo_mailto_parse(Codes, User, []) :-
+    identifier(Codes),
+    string_codes(User, Codes).
+
+host_mailto_parse([], []) :- !.
+
+host_mailto_parse([64 | Codes], Host) :-
+    host_parse(Codes, Host, []).
+
+%
 % ZOS Path Parser
 %
 
@@ -192,12 +215,14 @@ path_zos_parse([], [], []) :- !.
 
 path_zos_parse([47], [], []) :- !.
 
-path_zos_parse([C | T], [], [C | T]) :-
-    isPathSeparator(C),
+path_zos_parse([47, S | T], [], [S | T]) :-
+    isPathSeparator(S),
     !.
 
+path_zos_parse([S | T], [], [S | T]) :-
+    isPathSeparator(S),
+    !.
 
-% 40 = '('
 path_zos_parse([47 | Codes], Path, [Separator | Tail]) :-
     append(PathCode, [Separator | Tail], Codes),
     isPathSeparator(Separator),
